@@ -2417,6 +2417,7 @@ dependencies = [
 name = "canoe-sp1-cc-host"
 version = "0.1.0"
 dependencies = [
+ "alloy-genesis",
  "alloy-primitives 1.4.0",
  "alloy-rpc-types",
  "alloy-sol-types",

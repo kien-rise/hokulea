@@ -82,9 +82,11 @@ async fn main() -> anyhow::Result<()> {
                 .and_then(|v| v.parse::<bool>().ok())
                 .unwrap_or(false);
 
-            let canoe_provider = CanoeSp1CCReducedProofProvider{
-                eth_rpc_url: cfg.kona_cfg.l1_node_address.clone().unwrap(),
+            let eth_rpc_url = cfg.kona_cfg.l1_node_address.clone().unwrap();
+            let canoe_provider = CanoeSp1CCReducedProofProvider {
+                eth_rpc_url: eth_rpc_url.parse().unwrap(),
                 mock_mode,
+                custom_chain_config: None,
             };
             let canoe_verifier = CanoeSp1CCVerifier{};
         } else {

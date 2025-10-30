@@ -119,3 +119,26 @@ fn cert_verifier_legacy_v2_interface(
         }
     }
 }
+
+impl<F: Clone + Send + 'static> CanoeVerifierAddressFetcher for F
+where
+    F: Fn(u64, &EigenDAVersionedCert) -> Result<Address, CanoeVerifierAddressFetcherError>,
+{
+    fn fetch_address(
+        &self,
+        chain_id: u64,
+        versioned_cert: &EigenDAVersionedCert,
+    ) -> Result<Address, CanoeVerifierAddressFetcherError> {
+        self(chain_id, versioned_cert)
+    }
+}
+
+impl CanoeVerifierAddressFetcher for Address {
+    fn fetch_address(
+        &self,
+        _chain_id: u64,
+        _versioned_cert: &EigenDAVersionedCert,
+    ) -> Result<Address, CanoeVerifierAddressFetcherError> {
+        Ok(*self)
+    }
+}
