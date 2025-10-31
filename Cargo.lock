@@ -4332,6 +4332,7 @@ name = "hokulea-example-preloader"
 version = "0.1.0"
 dependencies = [
  "alloy-evm 0.21.2",
+ "alloy-genesis",
  "anyhow",
  "canoe-provider",
  "canoe-sp1-cc-host",
