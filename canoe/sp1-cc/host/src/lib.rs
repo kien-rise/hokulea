@@ -223,6 +223,35 @@ async fn get_sp1_cc_proof(
     // Feed the sketch into the client.
     let input_bytes = bincode::serialize(&evm_state_sketch)
         .expect("bincode should have serialized the EVM sketch");
+    
+    // Assert that deserialization works and produces the same data
+    match bincode::deserialize::<sp1_cc_client_executor::io::EvmSketchInput>(&input_bytes) {
+        Ok(deserialized) => {
+            // Compare each field individually to identify differences
+            if deserialized.anchor != evm_state_sketch.anchor {
+                panic!("Field 'anchor' differs after serialization/deserialization");
+            }
+            if deserialized.genesis != evm_state_sketch.genesis {
+                panic!("Field 'genesis' differs after serialization/deserialization");
+            }
+            if deserialized.ancestor_headers != evm_state_sketch.ancestor_headers {
+                panic!("Field 'ancestor_headers' differs after serialization/deserialization");
+            }
+            if deserialized.state != evm_state_sketch.state {
+                panic!("Field 'state' differs after serialization/deserialization");
+            }
+            if deserialized.bytecodes != evm_state_sketch.bytecodes {
+                panic!("Field 'bytecodes' differs after serialization/deserialization");
+            }
+            if deserialized.receipts != evm_state_sketch.receipts {
+                panic!("Field 'receipts' differs after serialization/deserialization");
+            }
+            info!("✅ Serialization/deserialization roundtrip successful for all 6 fields");
+        }
+        Err(e) => {
+            panic!("Failed to deserialize EvmSketchInput: {:?}", e);
+        }
+    }
     let mut stdin = SP1Stdin::new();
     stdin.write(&input_bytes);
     stdin.write(&canoe_inputs);
