@@ -1,4 +1,4 @@
-use alloy_primitives::Address;
+use alloy_primitives::{hex, Address};
 use alloy_rpc_types::BlockNumberOrTag;
 use alloy_sol_types::{sol_data::Bool, SolType};
 use alloy_genesis::ChainConfig;
@@ -221,11 +221,22 @@ async fn get_sp1_cc_proof(
         .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
     // Feed the sketch into the client.
+    info!("evm_state_sketch={:?}", &evm_state_sketch);
+    info!("&bincode::serialize(&evm_state_sketch.anchor)={:?}", &bincode::serialize(&evm_state_sketch.anchor).map(hex::encode));
+    info!("&bincode::serialize(&evm_state_sketch.genesis)={:?}", &bincode::serialize(&evm_state_sketch.genesis).map(hex::encode));
+    info!("&bincode::serialize(&evm_state_sketch.ancestor_headers)={:?}", &bincode::serialize(&evm_state_sketch.ancestor_headers).map(hex::encode));
+    info!("&bincode::serialize(&evm_state_sketch.state)={:?}", &bincode::serialize(&evm_state_sketch.state).map(hex::encode));
+    info!("&bincode::serialize(&evm_state_sketch.bytecodes)={:?}", &bincode::serialize(&evm_state_sketch.bytecodes).map(hex::encode));
+    info!("&bincode::serialize(&evm_state_sketch.receipts)={:?}", &bincode::serialize(&evm_state_sketch.receipts).map(hex::encode));
     let input_bytes = bincode::serialize(&evm_state_sketch)
         .expect("bincode should have serialized the EVM sketch");
     let mut stdin = SP1Stdin::new();
     stdin.write(&input_bytes);
     stdin.write(&canoe_inputs);
+    for (index, line) in stdin.buffer.iter().enumerate() {
+        info!("stdin.buffer[{}]={:?}", index, hex::encode(line));
+    }
+
 
     // Create a `NetworkProver`.
     let network_private_key = env::var("NETWORK_PRIVATE_KEY").unwrap_or_else(|_| {
