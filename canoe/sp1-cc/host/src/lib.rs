@@ -1,5 +1,6 @@
 use alloy_primitives::Address;
 use alloy_rpc_types::BlockNumberOrTag;
+use alloy_serde::OtherFields;
 use alloy_sol_types::{sol_data::Bool, SolType};
 use alloy_genesis::ChainConfig;
 use anyhow::Result;
@@ -269,21 +270,134 @@ async fn get_sp1_cc_proof(
                 Err(anchor_err) => panic!("❌ Field 'anchor' serialization failed: {:?}", anchor_err),
             }
 
-            // Test genesis field
-            match bincode::serialize(&evm_state_sketch.genesis) {
-                Ok(genesis_bytes) => {
-                    match bincode::deserialize::<_>(&genesis_bytes) {
-                        Ok(deserialized_genesis) => {
-                            if evm_state_sketch.genesis == deserialized_genesis {
-                                info!("✅ Field 'genesis' serialization OK");
-                            } else {
-                                panic!("❌ Field 'genesis' differs after round-trip");
+            // Test genesis field - focus on Genesis::Custom ChainConfig fields
+            match &evm_state_sketch.genesis {
+                sp1_cc_host_executor::Genesis::Custom(chain_config) => {
+                    info!("Testing Genesis::Custom with ChainConfig fields...");
+                    
+                    // Test individual ChainConfig fields
+                    info!("Testing chain_id: {}", chain_config.chain_id);
+                    match bincode::serialize(&chain_config.chain_id) {
+                        Ok(bytes) => match bincode::deserialize::<u64>(&bytes) {
+                            Ok(val) => info!("✅ chain_id OK: {}", val),
+                            Err(e) => panic!("❌ chain_id deserialize failed: {:?}", e),
+                        },
+                        Err(e) => panic!("❌ chain_id serialize failed: {:?}", e),
+                    }
+                    
+                    info!("Testing extra_fields with {} entries", chain_config.extra_fields.len());
+                    match bincode::serialize(&chain_config.extra_fields) {
+                        Ok(bytes) => match bincode::deserialize::<OtherFields>(&bytes) {
+                            Ok(_) => info!("✅ extra_fields OK"),
+                            Err(e) => panic!("❌ extra_fields deserialize failed: {:?}", e),
+                        },
+                        Err(e) => panic!("❌ extra_fields serialize failed: {:?}", e),
+                    }
+                    
+                    // Test each ChainConfig field individually
+                    info!("Testing all ChainConfig fields individually...");
+                    
+                    macro_rules! test_field {
+                        ($field:expr, $field_name:expr) => {
+                            match bincode::serialize(&$field) {
+                                Ok(bytes) => {
+                                    info!("✅ {} serialize OK ({} bytes)", $field_name, bytes.len());
+                                }
+                                Err(e) => panic!("❌ {} serialize failed: {:?}", $field_name, e),
+                            }
+                        };
+                    }
+                    
+                    test_field!(chain_config.homestead_block, "homestead_block");
+                    test_field!(chain_config.dao_fork_block, "dao_fork_block");
+                    test_field!(chain_config.dao_fork_support, "dao_fork_support");
+                    test_field!(chain_config.eip150_block, "eip150_block");
+                    test_field!(chain_config.eip155_block, "eip155_block");
+                    test_field!(chain_config.eip158_block, "eip158_block");
+                    test_field!(chain_config.byzantium_block, "byzantium_block");
+                    test_field!(chain_config.constantinople_block, "constantinople_block");
+                    test_field!(chain_config.petersburg_block, "petersburg_block");
+                    test_field!(chain_config.istanbul_block, "istanbul_block");
+                    test_field!(chain_config.muir_glacier_block, "muir_glacier_block");
+                    test_field!(chain_config.berlin_block, "berlin_block");
+                    test_field!(chain_config.london_block, "london_block");
+                    test_field!(chain_config.arrow_glacier_block, "arrow_glacier_block");
+                    test_field!(chain_config.gray_glacier_block, "gray_glacier_block");
+                    test_field!(chain_config.merge_netsplit_block, "merge_netsplit_block");
+                    test_field!(chain_config.shanghai_time, "shanghai_time");
+                    test_field!(chain_config.cancun_time, "cancun_time");
+                    test_field!(chain_config.prague_time, "prague_time");
+                    test_field!(chain_config.osaka_time, "osaka_time");
+                    test_field!(chain_config.terminal_total_difficulty, "terminal_total_difficulty");
+                    test_field!(chain_config.terminal_total_difficulty_passed, "terminal_total_difficulty_passed");
+                    test_field!(chain_config.ethash, "ethash");
+                    test_field!(chain_config.clique, "clique");
+                    test_field!(chain_config.parlia, "parlia");
+                    test_field!(chain_config.deposit_contract_address, "deposit_contract_address");
+                    test_field!(chain_config.blob_schedule, "blob_schedule");
+                    test_field!(chain_config.bpo1_time, "bpo1_time");
+                    test_field!(chain_config.bpo2_time, "bpo2_time");
+                    test_field!(chain_config.bpo3_time, "bpo3_time");
+                    test_field!(chain_config.bpo4_time, "bpo4_time");
+                    test_field!(chain_config.bpo5_time, "bpo5_time");
+                    
+                    // Test extra_fields in detail
+                    info!("Testing extra_fields in detail: {} entries", chain_config.extra_fields.len());
+                    for (key, value) in &chain_config.extra_fields {
+                        info!("  extra_field[{}] = {:?}", key, value);
+                        match bincode::serialize(value) {
+                            Ok(_) => info!("    ✅ extra_field[{}] serialize OK", key),
+                            Err(e) => panic!("    ❌ extra_field[{}] serialize failed: {:?}", key, e),
+                        }
+                    }
+                    
+                    info!("All individual fields tested, now testing full ChainConfig...");
+                    match bincode::serialize(chain_config) {
+                        Ok(bytes) => {
+                            info!("ChainConfig serialized to {} bytes", bytes.len());
+                            match bincode::deserialize::<alloy_genesis::ChainConfig>(&bytes) {
+                                Ok(_) => info!("✅ ChainConfig roundtrip OK"),
+                                Err(e) => panic!("❌ ChainConfig deserialize failed: {:?}", e),
+                            }
+                        },
+                        Err(e) => panic!("❌ ChainConfig serialize failed: {:?}", e),
+                    }
+                    
+                    // Finally test the full Genesis enum
+                    match bincode::serialize(&evm_state_sketch.genesis) {
+                        Ok(genesis_bytes) => {
+                            match bincode::deserialize::<sp1_cc_host_executor::Genesis>(&genesis_bytes) {
+                                Ok(deserialized_genesis) => {
+                                    if evm_state_sketch.genesis == deserialized_genesis {
+                                        info!("✅ Full Genesis serialization OK");
+                                    } else {
+                                        panic!("❌ Full Genesis differs after round-trip");
+                                    }
+                                }
+                                Err(genesis_err) => panic!("❌ Full Genesis deserialization failed: {:?}", genesis_err),
                             }
                         }
-                        Err(genesis_err) => panic!("❌ Field 'genesis' deserialization failed: {:?}", genesis_err),
+                        Err(genesis_err) => panic!("❌ Full Genesis serialization failed: {:?}", genesis_err),
                     }
                 }
-                Err(genesis_err) => panic!("❌ Field 'genesis' serialization failed: {:?}", genesis_err),
+                other => {
+                    info!("Genesis variant: {:?}", other);
+                    match bincode::serialize(&evm_state_sketch.genesis) {
+                        Ok(genesis_bytes) => {
+                            match bincode::deserialize::<sp1_cc_host_executor::Genesis>(&genesis_bytes) {
+                                Ok(deserialized_genesis) => {
+                                    if evm_state_sketch.genesis == deserialized_genesis {
+                                        info!("✅ Non-Custom Genesis serialization OK");
+                                    } else {
+                                        panic!("❌ Non-Custom Genesis differs after round-trip");
+                                    }
+                                }
+                                Err(genesis_err) => panic!("❌ Non-Custom Genesis deserialization failed: {:?}", genesis_err),
+                            }
+                        }
+                        Err(genesis_err) => panic!("❌ Non-Custom Genesis serialization failed: {:?}", genesis_err),
+                    }
+                }
             }
 
             // // Test ancestor_headers field

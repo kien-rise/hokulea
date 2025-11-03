@@ -2420,6 +2420,7 @@ dependencies = [
  "alloy-genesis",
  "alloy-primitives 1.4.0",
  "alloy-rpc-types",
+ "alloy-serde",
  "alloy-sol-types",
  "anyhow",
  "async-trait",
