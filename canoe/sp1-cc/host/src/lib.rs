@@ -223,7 +223,7 @@ async fn get_sp1_cc_proof(
     // Feed the sketch into the client.
     let input_bytes = bincode::serialize(&evm_state_sketch)
         .expect("bincode should have serialized the EVM sketch");
-    
+
     // Assert that deserialization works and produces the same data
     match bincode::deserialize::<sp1_cc_client_executor::io::EvmSketchInput>(&input_bytes) {
         Ok(deserialized) => {
@@ -249,7 +249,112 @@ async fn get_sp1_cc_proof(
             info!("✅ Serialization/deserialization roundtrip successful for all 6 fields");
         }
         Err(e) => {
-            panic!("Failed to deserialize EvmSketchInput: {:?}", e);
+            // Test individual field serialization to identify the problematic field
+            info!("Testing individual field serialization...");
+
+            // Test anchor field
+            match bincode::serialize(&evm_state_sketch.anchor) {
+                Ok(anchor_bytes) => {
+                    match bincode::deserialize(&anchor_bytes) {
+                        Ok(deserialized_anchor) => {
+                            if evm_state_sketch.anchor == deserialized_anchor {
+                                info!("✅ Field 'anchor' serialization OK");
+                            } else {
+                                panic!("❌ Field 'anchor' differs after round-trip");
+                            }
+                        }
+                        Err(anchor_err) => panic!("❌ Field 'anchor' deserialization failed: {:?}", anchor_err),
+                    }
+                }
+                Err(anchor_err) => panic!("❌ Field 'anchor' serialization failed: {:?}", anchor_err),
+            }
+
+            // Test genesis field
+            match bincode::serialize(&evm_state_sketch.genesis) {
+                Ok(genesis_bytes) => {
+                    match bincode::deserialize::<_>(&genesis_bytes) {
+                        Ok(deserialized_genesis) => {
+                            if evm_state_sketch.genesis == deserialized_genesis {
+                                info!("✅ Field 'genesis' serialization OK");
+                            } else {
+                                panic!("❌ Field 'genesis' differs after round-trip");
+                            }
+                        }
+                        Err(genesis_err) => panic!("❌ Field 'genesis' deserialization failed: {:?}", genesis_err),
+                    }
+                }
+                Err(genesis_err) => panic!("❌ Field 'genesis' serialization failed: {:?}", genesis_err),
+            }
+
+            // // Test ancestor_headers field
+            // match bincode::serialize(&evm_state_sketch.ancestor_headers) {
+            //     Ok(headers_bytes) => {
+            //         match bincode::deserialize::<_>(&headers_bytes) {
+            //             Ok(deserialized_headers) => {
+            //                 if evm_state_sketch.ancestor_headers == deserialized_headers {
+            //                     info!("✅ Field 'ancestor_headers' serialization OK");
+            //                 } else {
+            //                     panic!("❌ Field 'ancestor_headers' differs after round-trip");
+            //                 }
+            //             }
+            //             Err(headers_err) => panic!("❌ Field 'ancestor_headers' deserialization failed: {:?}", headers_err),
+            //         }
+            //     }
+            //     Err(headers_err) => panic!("❌ Field 'ancestor_headers' serialization failed: {:?}", headers_err),
+            // }
+
+            // Test state field
+            match bincode::serialize(&evm_state_sketch.state) {
+                Ok(state_bytes) => {
+                    match bincode::deserialize::<_>(&state_bytes) {
+                        Ok(deserialized_state) => {
+                            if evm_state_sketch.state == deserialized_state {
+                                info!("✅ Field 'state' serialization OK");
+                            } else {
+                                panic!("❌ Field 'state' differs after round-trip");
+                            }
+                        }
+                        Err(state_err) => panic!("❌ Field 'state' deserialization failed: {:?}", state_err),
+                    }
+                }
+                Err(state_err) => panic!("❌ Field 'state' serialization failed: {:?}", state_err),
+            }
+
+            // // Test bytecodes field
+            // match bincode::serialize(&evm_state_sketch.bytecodes) {
+            //     Ok(bytecodes_bytes) => {
+            //         match bincode::deserialize::<_>(&bytecodes_bytes) {
+            //             Ok(deserialized_bytecodes) => {
+            //                 if evm_state_sketch.bytecodes == deserialized_bytecodes {
+            //                     info!("✅ Field 'bytecodes' serialization OK");
+            //                 } else {
+            //                     panic!("❌ Field 'bytecodes' differs after round-trip");
+            //                 }
+            //             }
+            //             Err(bytecodes_err) => panic!("❌ Field 'bytecodes' deserialization failed: {:?}", bytecodes_err),
+            //         }
+            //     }
+            //     Err(bytecodes_err) => panic!("❌ Field 'bytecodes' serialization failed: {:?}", bytecodes_err),
+            // }
+
+            // // Test receipts field
+            // match bincode::serialize(&evm_state_sketch.receipts) {
+            //     Ok(receipts_bytes) => {
+            //         match bincode::deserialize::<_>(&receipts_bytes) {
+            //             Ok(deserialized_receipts) => {
+            //                 if evm_state_sketch.receipts == deserialized_receipts {
+            //                     info!("✅ Field 'receipts' serialization OK");
+            //                 } else {
+            //                     panic!("❌ Field 'receipts' differs after round-trip");
+            //                 }
+            //             }
+            //             Err(receipts_err) => panic!("❌ Field 'receipts' deserialization failed: {:?}", receipts_err),
+            //         }
+            //     }
+            //     Err(receipts_err) => panic!("❌ Field 'receipts' serialization failed: {:?}", receipts_err),
+            // }
+
+            panic!("Failed to deserialize complete EvmSketchInput, but individual fields seem OK: {:?}", e);
         }
     }
     let mut stdin = SP1Stdin::new();
