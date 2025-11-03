@@ -1,4 +1,4 @@
-use alloy_primitives::Address;
+use alloy_primitives::{hex, Address};
 use alloy_rpc_types::BlockNumberOrTag;
 use alloy_sol_types::{sol_data::Bool, SolType};
 use alloy_genesis::ChainConfig;
@@ -221,11 +221,16 @@ async fn get_sp1_cc_proof(
         .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
     // Feed the sketch into the client.
+    info!("evm_state_sketch={:?}", &evm_state_sketch);
     let input_bytes = bincode::serialize(&evm_state_sketch)
         .expect("bincode should have serialized the EVM sketch");
     let mut stdin = SP1Stdin::new();
     stdin.write(&input_bytes);
     stdin.write(&canoe_inputs);
+    for (index, line) in stdin.buffer.iter().enumerate() {
+        info!("stdin.buffer[{}]={:?}", index, hex::encode(line));
+    }
+
 
     // Create a `NetworkProver`.
     let network_private_key = env::var("NETWORK_PRIVATE_KEY").unwrap_or_else(|_| {
