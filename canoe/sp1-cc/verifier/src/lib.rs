@@ -6,7 +6,7 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use alloy_primitives::{keccak256, B256, U256};
+use alloy_primitives::{keccak256, b256, B256, U256};
 use alloy_sol_types::SolValue;
 use canoe_bindings::Journal;
 use canoe_verifier::{chain_spec, CanoeVerifier, CertValidity, HokuleaCanoeVerificationError};
@@ -160,6 +160,8 @@ fn rsp_genesis_hash(chain_id: u64) -> B256 {
                 bincode::serialize(&genesis).expect("should be able to serialize rsp genesis");
             keccak256(rsp_genesis_bytes)
         }
-        Err(e) => panic!("rsp does not recognize genesis {e}"),
+        Err(_) => {
+            b256!("91301d7e76f9f8453bd0e2382d75af7ee919c181117f1ea84123a2caadfe796b")
+        },
     }
 }
