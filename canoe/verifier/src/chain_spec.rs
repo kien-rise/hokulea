@@ -38,7 +38,9 @@ pub fn derive_chain_spec_id(
                 l1_head_block_number,
             )
         }
-        _ => panic!("unsupported chain id"),
+        _ => {
+            SpecId::PRAGUE
+        },
     }
 }
 
