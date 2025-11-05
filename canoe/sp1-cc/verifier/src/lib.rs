@@ -2,6 +2,8 @@
 #![no_std]
 extern crate alloc;
 
+use core::str::FromStr;
+
 use alloc::{
     string::{String, ToString},
     vec::Vec,
@@ -154,6 +156,10 @@ fn hash_chain_config(chain_id: u64, active_fork_name: String) -> B256 {
 // Resulting different genesis hash.
 // https://github.com/succinctlabs/rsp/blob/c14b4005ea9257e4d434a080b6900411c17f781b/crates/primitives/src/genesis.rs#L19
 fn rsp_genesis_hash(chain_id: u64) -> B256 {
+    if let Some(s) = option_env!("CUSTOM_RSP_GENESIS_HASH") {
+        return B256::from_str(s).expect("CUSTOM_RSP_GENESIS_HASH should be a valid hex string");
+    }
+
     match Genesis::try_from(chain_id) {
         Ok(genesis) => {
             let rsp_genesis_bytes =
