@@ -53,6 +53,35 @@ impl Default for CanoeSp1CCVerifier {
     }
 }
 
+impl CanoeSp1CCVerifier {
+    pub fn encode_vkey(limbs: &[u32; 8]) -> B256 {
+        let mut bytes = [0u8; 32];
+        for (i, limb) in limbs.iter().enumerate() {
+            let be_bytes = limb.to_be_bytes();
+            bytes[i * 4..(i + 1) * 4].copy_from_slice(&be_bytes);
+        }
+        B256::from(bytes)
+    }
+
+    pub fn decode_vkey(bytes: &B256) -> [u32; 8] {
+        let mut limbs = [0u32; 8];
+        for i in 0..8 {
+            limbs[i] = u32::from_be_bytes(bytes[i * 4..(i + 1) * 4].try_into().unwrap());
+        }
+        limbs
+    }
+
+    pub fn new(v_key_bytes: &B256) -> Self {
+        Self {
+            v_key: Self::decode_vkey(v_key_bytes),
+        }
+    }
+
+    pub fn v_key(&self) -> &[u32; 8] {
+        &self.v_key
+    }
+}
+
 impl CanoeVerifier for CanoeSp1CCVerifier {
     // some variable is unused, because when sp1-cc verifier is not configured in zkVM mode, all tests
     // are skipped because sp1 cannot take sp1-sdk as dependency
