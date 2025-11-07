@@ -38,6 +38,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use anyhow::Context;
 use tracing::info;
 
 #[tokio::main(flavor = "multi_thread")]
@@ -72,7 +73,7 @@ async fn main() -> anyhow::Result<()> {
             use sp1_sdk::{ProverClient, HashableKey};
             use std::env;
 
-            const CANOE_SP1CC_ELF: &[u8] = canoe_sp1_cc_host::ELF;
+            const CANOE_SP1CC_ELF: &[u8] = canoe_sp1_cc_host::DEFAULT_ELF;
             let client = ProverClient::from_env();
             let (_pk, canoe_vk) = client.setup(CANOE_SP1CC_ELF);
 
@@ -97,6 +98,7 @@ async fn main() -> anyhow::Result<()> {
                 eth_rpc_url: cfg.kona_cfg.l1_node_address.clone().unwrap(),
                 mock_mode,
                 custom_chain_config,
+                custom_canoe_client_elf: None,
             };
             let canoe_verifier = CanoeNoOpVerifier{};
         } else {
