@@ -46,7 +46,7 @@ pub struct CanoeSp1CCVerifier {
 }
 
 impl CanoeSp1CCVerifier {
-    fn new(v_key: [u32; 8]) -> Self {
+    pub fn new(v_key: [u32; 8]) -> Self {
         Self { v_key }
     }
 }
