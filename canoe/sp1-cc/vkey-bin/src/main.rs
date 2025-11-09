@@ -33,7 +33,7 @@ fn main() {
     let canoe_client_elf: Vec<u8> = if let Some(elf_path) = cli.elf {
         fs::read(&elf_path).expect("Failed to read ELF file")
     } else {
-        canoe_sp1_cc_host::ELF.to_vec()
+        canoe_sp1_cc_host::DEFAULT_ELF.to_vec()
     };
 
     let client = ProverClient::from_env();
