@@ -39,7 +39,21 @@ pub const V_KEY: [u32; 8] = [
 ];
 
 #[derive(Clone)]
-pub struct CanoeSp1CCVerifier {}
+pub struct CanoeSp1CCVerifier {
+    v_key: [u32; 8],
+}
+
+impl CanoeSp1CCVerifier {
+    pub fn new(v_key: [u32; 8]) -> Self {
+        Self { v_key }
+    }
+}
+
+impl Default for CanoeSp1CCVerifier {
+    fn default() -> Self {
+        Self::new(V_KEY)
+    }
+}
 
 impl CanoeVerifier for CanoeSp1CCVerifier {
     // some variable is unused, because when sp1-cc verifier is not configured in zkVM mode, all tests
@@ -50,7 +64,7 @@ impl CanoeVerifier for CanoeSp1CCVerifier {
         cert_validity_pair: Vec<(AltDACommitment, CertValidity)>,
         canoe_proof_bytes: Option<Vec<u8>>,
     ) -> Result<(), HokuleaCanoeVerificationError> {
-        info!("using CanoeSp1CCVerifier with v_key {:?}", V_KEY);
+        info!("using CanoeSp1CCVerifier with v_key {:?}", &self.v_key);
 
         assert!(!cert_validity_pair.is_empty());
 
@@ -72,7 +86,7 @@ impl CanoeVerifier for CanoeSp1CCVerifier {
                 let public_values_digest = Sha256::digest(journals_bytes);
                 // the function will panic if the proof is incorrect
                 // https://github.com/succinctlabs/sp1/blob/011d2c64808301878e6f0375c3596b3e22e53949/crates/zkvm/lib/src/verify.rs#L3
-                verify_sp1_proof(&V_KEY, &public_values_digest.into());
+                verify_sp1_proof(&self.v_key, &public_values_digest.into());
                 Ok(())
             } else {
                 panic!("CanoeSp1CCVerifier should only be used for secure integration whose validation happens in zkVM");
