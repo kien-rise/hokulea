@@ -56,6 +56,16 @@ impl CanoeVerifierAddressFetcher for CanoeVerifierAddressFetcherDeployedByEigenL
     }
 }
 
+impl CanoeVerifierAddressFetcher for Address {
+    fn fetch_address(
+        &self,
+        _: u64,
+        _: &EigenDAVersionedCert,
+    ) -> Result<Address, CanoeVerifierAddressFetcherError> {
+        Ok(*self)
+    }
+}
+
 /// get cert verifier address based on chain id, and cert version from altda commitment
 /// V3 cert uses router address
 fn cert_verifier_address(

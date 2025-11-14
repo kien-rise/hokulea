@@ -1,4 +1,4 @@
-use alloy_primitives::Address;
+use alloy_primitives::{Address, Bytes};
 use alloy_rpc_client::RpcClient;
 use alloy_rpc_types::BlockNumberOrTag;
 use alloy_sol_types::{sol_data::Bool, SolType};
@@ -20,7 +20,7 @@ use tracing::{debug, info, warn};
 
 use rsp_primitives::genesis::genesis_from_json;
 
-/// The ELF we want to execute inside the zkVM.
+/// The default ELF we want to execute inside the zkVM.
 pub const ELF: &[u8] = include_bytes!("../../elf/canoe-sp1-cc-client");
 
 const DEFAULT_NETWORK_PRIVATE_KEY: &str =
@@ -61,6 +61,8 @@ pub struct CanoeSp1CCProvider {
     pub eth_rpc_client: RpcClient,
     /// if true, execute and return a mock proof
     pub mock_mode: bool,
+    /// optional custom ELF bytes for the SP1 zkVM client
+    pub custom_canoe_client_elf: Option<Bytes>,
 }
 
 #[async_trait]
@@ -75,8 +77,20 @@ impl CanoeProvider for CanoeSp1CCProvider {
         if canoe_inputs.is_empty() {
             return None;
         }
+        let elf: &[u8] = match &self.custom_canoe_client_elf {
+            Some(elf) => elf.as_ref(),
+            None => ELF,
+        };
 
-        Some(get_sp1_cc_proof(canoe_inputs, self.eth_rpc_client.clone(), self.mock_mode).await)
+        Some(
+            get_sp1_cc_proof(
+                canoe_inputs,
+                self.eth_rpc_client.clone(),
+                self.mock_mode,
+                elf,
+            )
+            .await,
+        )
     }
 }
 
@@ -91,6 +105,8 @@ pub struct CanoeSp1CCReducedProofProvider {
     pub eth_rpc_client: RpcClient,
     /// if true, execute and return a mock proof
     pub mock_mode: bool,
+    /// optional custom ELF bytes for the SP1 zkVM client
+    pub custom_canoe_client_elf: Option<Bytes>,
 }
 
 #[async_trait]
@@ -105,8 +121,19 @@ impl CanoeProvider for CanoeSp1CCReducedProofProvider {
         if canoe_inputs.is_empty() {
             return None;
         }
+        let elf: &[u8] = match &self.custom_canoe_client_elf {
+            Some(elf) => elf.as_ref(),
+            None => ELF,
+        };
 
-        match get_sp1_cc_proof(canoe_inputs, self.eth_rpc_client.clone(), self.mock_mode).await {
+        match get_sp1_cc_proof(
+            canoe_inputs,
+            self.eth_rpc_client.clone(),
+            self.mock_mode,
+            elf,
+        )
+        .await
+        {
             Ok(proof) => {
                 let SP1Proof::Compressed(proof) = proof.proof else {
                     panic!("cannot get Sp1ReducedProof")
@@ -122,6 +149,7 @@ async fn get_sp1_cc_proof(
     canoe_inputs: Vec<CanoeInput>,
     eth_rpc_client: RpcClient,
     mock_mode: bool,
+    elf: &[u8],
 ) -> Result<sp1_sdk::SP1ProofWithPublicValues> {
     // ensure chain id and l1 block number across all DAcerts are identical
     let l1_chain_id = canoe_inputs[0].l1_chain_id;
@@ -227,12 +255,12 @@ async fn get_sp1_cc_proof(
         .network()
         .private_key(&network_private_key)
         .build();
-    let (pk, _vk) = client.setup(ELF);
+    let (pk, _vk) = client.setup(elf);
 
     let proof = if mock_mode {
         // Execute the program using the `ProverClient.execute` method, without generating a proof.
         let (public_values, report) = client
-            .execute(ELF, &stdin)
+            .execute(elf, &stdin)
             .run()
             .expect("sp1-cc should have executed the ELF");
         info!(
