@@ -9,8 +9,9 @@ use canoe_provider::{CanoeInput, CanoeProvider, CertVerifierCall};
 use sp1_cc_client_executor::ContractInput;
 use sp1_cc_host_executor::{EvmSketch, Genesis};
 use sp1_sdk::{
-    network::FulfillmentStrategy, Prover, ProverClient, SP1Proof, SP1ProofMode,
-    SP1ProofWithPublicValues, SP1Stdin, SP1_CIRCUIT_VERSION,
+    network::{FulfillmentStrategy, NetworkMode},
+    Prover, ProverClient, SP1Proof, SP1ProofMode, SP1ProofWithPublicValues, SP1Stdin,
+    SP1_CIRCUIT_VERSION,
 };
 use std::{
     env,
@@ -123,6 +124,41 @@ impl CanoeProvider for CanoeSp1CCReducedProofProvider {
     }
 }
 
+/// Parse a fulfillment strategy from a string.
+pub fn parse_fulfillment_strategy(value: String) -> FulfillmentStrategy {
+    match value.to_ascii_lowercase().as_str() {
+        "reserved" => FulfillmentStrategy::Reserved,
+        "hosted" => FulfillmentStrategy::Hosted,
+        "auction" => FulfillmentStrategy::Auction,
+        _ => FulfillmentStrategy::UnspecifiedFulfillmentStrategy,
+    }
+}
+
+/// Try to determine the network mode from the provided fulfillment strategies.
+pub fn determine_network_mode(
+    range_proof_strategy: FulfillmentStrategy,
+    agg_proof_strategy: FulfillmentStrategy,
+) -> Result<NetworkMode> {
+    match (range_proof_strategy, agg_proof_strategy) {
+            (FulfillmentStrategy::Auction, FulfillmentStrategy::Auction) => {
+                Ok(NetworkMode::Mainnet)
+            }
+            (
+                FulfillmentStrategy::Hosted | FulfillmentStrategy::Reserved,
+                FulfillmentStrategy::Hosted | FulfillmentStrategy::Reserved,
+            ) => Ok(NetworkMode::Reserved),
+            (FulfillmentStrategy::UnspecifiedFulfillmentStrategy, _) |
+            (_, FulfillmentStrategy::UnspecifiedFulfillmentStrategy) => Err(anyhow::anyhow!(
+                "The range and agg fulfillment Strategies must be specified"
+            )),
+            _ => Err(anyhow::anyhow!(
+                "The range fulfillment Strategy '{}' and agg fulfillment Strategy '{}' are incompatible",
+                range_proof_strategy.as_str_name().to_ascii_lowercase(),
+                agg_proof_strategy.as_str_name().to_ascii_lowercase()
+            )),
+        }
+}
+
 async fn get_sp1_cc_proof(
     canoe_inputs: Vec<CanoeInput>,
     eth_rpc_client: RpcClient,
@@ -221,8 +257,18 @@ async fn get_sp1_cc_proof(
         warn!("NETWORK_PRIVATE_KEY is not set, using default network private key");
         DEFAULT_NETWORK_PRIVATE_KEY.to_string()
     });
+
+    let range_proof_strategy = parse_fulfillment_strategy(
+        env::var("RANGE_PROOF_STRATEGY").unwrap_or("reserved".to_string()),
+    );
+    let agg_proof_strategy = parse_fulfillment_strategy(
+        env::var("AGG_PROOF_STRATEGY").unwrap_or("reserved".to_string()),
+    );
+
+    let network_mode = determine_network_mode(range_proof_strategy, agg_proof_strategy)?;
+
     let client = ProverClient::builder()
-        .network()
+        .network_for(network_mode)
         .private_key(&network_private_key)
         .build();
     let (pk, _vk) = client.setup(elf);
