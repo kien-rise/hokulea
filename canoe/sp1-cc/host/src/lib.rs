@@ -9,8 +9,9 @@ use canoe_provider::{CanoeInput, CanoeProvider, CertVerifierCall};
 use sp1_cc_client_executor::ContractInput;
 use sp1_cc_host_executor::{EvmSketch, Genesis};
 use sp1_sdk::{
-    network::FulfillmentStrategy, Prover, ProverClient, SP1Proof, SP1ProofMode,
-    SP1ProofWithPublicValues, SP1Stdin, SP1_CIRCUIT_VERSION,
+    network::{FulfillmentStrategy, NetworkMode},
+    Prover, ProverClient, SP1Proof, SP1ProofMode, SP1ProofWithPublicValues, SP1Stdin,
+    SP1_CIRCUIT_VERSION,
 };
 use std::{
     env,
@@ -217,12 +218,34 @@ async fn get_sp1_cc_proof(
     stdin.write(&canoe_inputs);
 
     // Create a `NetworkProver`.
+    let sp1_cc_proof_strategy = match env::var("SP1_CC_PROOF_STRATEGY")
+        .ok()
+        .filter(|s| !s.is_empty())
+    {
+        Some(raw) => FulfillmentStrategy::from_str_name(&raw.to_uppercase())
+            .ok_or_else(|| anyhow::anyhow!("Invalid FulfillmentStrategy: {raw}"))?,
+        None => {
+            if !mock_mode {
+                warn!("SP1_CC_PROOF_STRATEGY not set; using Reserved as the default strategy");
+            }
+            FulfillmentStrategy::Reserved
+        }
+    };
+
+    let network_mode = match sp1_cc_proof_strategy {
+        FulfillmentStrategy::UnspecifiedFulfillmentStrategy => {
+            anyhow::bail!("The sp1-cc proof fulfillment strategy must be specified")
+        }
+        FulfillmentStrategy::Hosted | FulfillmentStrategy::Reserved => NetworkMode::Reserved,
+        FulfillmentStrategy::Auction => NetworkMode::Mainnet,
+    };
+
     let network_private_key = env::var("NETWORK_PRIVATE_KEY").unwrap_or_else(|_| {
         warn!("NETWORK_PRIVATE_KEY is not set, using default network private key");
         DEFAULT_NETWORK_PRIVATE_KEY.to_string()
     });
     let client = ProverClient::builder()
-        .network()
+        .network_for(network_mode)
         .private_key(&network_private_key)
         .build();
     let (pk, _vk) = client.setup(elf);
@@ -249,15 +272,6 @@ async fn get_sp1_cc_proof(
             SP1_CIRCUIT_VERSION,
         )
     } else {
-        let sp1_cc_proof_strategy = match env::var("SP1_CC_PROOF_STRATEGY") {
-            Ok(raw) => FulfillmentStrategy::from_str_name(&raw.to_uppercase())
-                .ok_or_else(|| anyhow::anyhow!("Invalid FulfillmentStrategy: {raw}"))?,
-            Err(_) => {
-                warn!("SP1_CC_PROOF_STRATEGY not set; using Reserved as the default strategy");
-                FulfillmentStrategy::Reserved
-            }
-        };
-
         // Generate the proof for the given program and input.
         let proof = client
             .prove(&pk, &stdin)
