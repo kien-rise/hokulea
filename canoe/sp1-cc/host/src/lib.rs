@@ -273,14 +273,29 @@ async fn get_sp1_cc_proof(
         )
     } else {
         // Generate the proof for the given program and input.
+        let cycle_limit: u64 = match env::var("SP1_CC_CYCLE_LIMIT") {
+            Ok(raw) if !raw.is_empty() => raw.parse()?,
+            _ => 1_000_000_000_000,
+        };
+
+        let gas_limit: u64 = match env::var("SP1_CC_GAS_LIMIT") {
+            Ok(raw) if !raw.is_empty() => raw.parse()?,
+            _ => 1_000_000_000_000,
+        };
+
+        let timeout_seconds: u64 = match env::var("SP1_CC_TIMEOUT_SECONDS") {
+            Ok(raw) if !raw.is_empty() => raw.parse()?,
+            _ => 4 * 60 * 60,
+        };
+
         let proof = client
             .prove(&pk, &stdin)
             .compressed()
             .strategy(sp1_cc_proof_strategy)
             .skip_simulation(true)
-            .cycle_limit(1_000_000_000_000)
-            .gas_limit(1_000_000_000_000)
-            .timeout(Duration::from_secs(4 * 60 * 60))
+            .cycle_limit(cycle_limit)
+            .gas_limit(gas_limit)
+            .timeout(Duration::from_secs(timeout_seconds))
             .run()
             .expect("sp1-cc should have produced a compressed proof");
 
