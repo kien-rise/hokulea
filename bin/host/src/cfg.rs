@@ -140,6 +140,7 @@ impl SingleChainHostWithEigenDA {
     /// Starts the host in native mode, running both the client and preimage server in the same
     /// process.
     async fn start_native(&self) -> Result<(), SingleChainHostError> {
+        tracing::error!("RISE: {}:{}", file!(), line!());
         let hint = BidirectionalChannel::new()?;
         let preimage = BidirectionalChannel::new()?;
 

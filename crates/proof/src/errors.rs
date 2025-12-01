@@ -1,4 +1,3 @@
-use alloc::string::ToString;
 use hokulea_eigenda::HokuleaErrorKind;
 use kona_preimage::errors::PreimageOracleError;
 
@@ -16,7 +15,7 @@ impl From<HokuleaOracleProviderError> for HokuleaErrorKind {
         match val {
             // in kona, all Preimage error are grouped into backend error <https://github.com/op-rs/kona/blob/4ef01882824b84d078ead9f834f4f78213dd6ef3/crates/protocol/derive/src/sources/blobs.rs#L136>
             // which is considered a temp issue
-            HokuleaOracleProviderError::Preimage(e) => HokuleaErrorKind::Temporary(e.to_string()),
+            HokuleaOracleProviderError::Preimage(e) => HokuleaErrorKind::Temporary(alloc::format!("HokuleaOracleProviderError::Preimage: {}", e)),
         }
     }
 }

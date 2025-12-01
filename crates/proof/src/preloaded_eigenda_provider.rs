@@ -165,12 +165,14 @@ impl EigenDAPreimageProvider for PreloadedEigenDAPreimageProvider {
         &mut self,
         altda_commitment: &AltDACommitment,
     ) -> Result<u64, Self::Error> {
+        tracing::info!("RISE: {}:{}", file!(), line!());
         let (stored_altda_commitment, recency) = self.recency_entries.pop().unwrap_or_else(|| {
             panic!(
                 "no recency window available for {:?} in preloaded preiamge provider",
                 altda_commitment
             )
         });
+        tracing::info!("RISE: {}:{}", file!(), line!());
         if stored_altda_commitment == *altda_commitment {
             Ok(recency)
         } else {
@@ -184,6 +186,7 @@ impl EigenDAPreimageProvider for PreloadedEigenDAPreimageProvider {
         &mut self,
         altda_commitment: &AltDACommitment,
     ) -> Result<bool, Self::Error> {
+        tracing::info!("RISE: {}:{}", file!(), line!());
         let (stored_altda_commitment, validity) =
             self.validity_entries.pop().unwrap_or_else(|| {
                 panic!(
@@ -191,6 +194,7 @@ impl EigenDAPreimageProvider for PreloadedEigenDAPreimageProvider {
                     altda_commitment
                 )
             });
+        tracing::info!("RISE: {}:{}", file!(), line!());
         if stored_altda_commitment == *altda_commitment {
             Ok(validity)
         } else {
@@ -204,6 +208,7 @@ impl EigenDAPreimageProvider for PreloadedEigenDAPreimageProvider {
         &mut self,
         altda_commitment: &AltDACommitment,
     ) -> Result<EncodedPayload, Self::Error> {
+        tracing::info!("RISE: {}:{}", file!(), line!());
         let (stored_altda_commitment, encoded_payload) =
             self.encoded_payload_entries.pop().unwrap_or_else(|| {
                 panic!(
@@ -211,6 +216,7 @@ impl EigenDAPreimageProvider for PreloadedEigenDAPreimageProvider {
                     altda_commitment
                 )
             });
+        tracing::info!("RISE: {}:{}", file!(), line!());
         if stored_altda_commitment == *altda_commitment {
             Ok(encoded_payload)
         } else {

@@ -35,6 +35,7 @@ where
     ) -> Result<EncodedPayload, HokuleaErrorKind> {
         info!(target: "eigenda_preimage_source", "parsed an altda commitment of version {}", altda_commitment.cert_version_str());
         // get recency window size, discard the old cert if necessary
+        tracing::info!("RISE: {}:{}", file!(), line!());
         match self
             .eigenda_fetcher
             .get_recency_window(altda_commitment)
@@ -46,6 +47,7 @@ where
             Err(e) => return Err(e.into()),
         };
 
+        tracing::info!("RISE: {}:{}", file!(), line!());
         // get cert validty via preimage oracle, discard cert if invalid
         match self.eigenda_fetcher.get_validity(altda_commitment).await {
             Ok(true) => (),
@@ -53,6 +55,7 @@ where
             Err(e) => return Err(e.into()),
         }
 
+        tracing::info!("RISE: {}:{}", file!(), line!());
         // get encoded payload via preimage oracle
         self.eigenda_fetcher
             .get_encoded_payload(altda_commitment)

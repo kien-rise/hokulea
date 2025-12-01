@@ -39,9 +39,11 @@ impl<T: CommsClient + Sync + Send> EigenDAPreimageProvider for OracleEigenDAPrei
         &mut self,
         altda_commitment: &AltDACommitment,
     ) -> Result<u64, Self::Error> {
+        tracing::info!("RISE: {}:{}", file!(), line!());
         let altda_commitment_bytes = altda_commitment.to_rlp_bytes();
         // hint the host about a new altda commitment. If it is the first time the host receiving it, the
         // host then prepares all the necessary preimage; if not, the host simply returns data from its cache
+        tracing::info!("RISE: {}:{}", file!(), line!());
         self.oracle
             .write(&ExtendedHintType::EigenDACert.encode_with(&[&altda_commitment_bytes]))
             .await
@@ -51,7 +53,7 @@ impl<T: CommsClient + Sync + Send> EigenDAPreimageProvider for OracleEigenDAPrei
 
         // make the call about recency of a altda commitment
         address_template[RESERVED_EIGENDA_API_BYTE_INDEX] = RESERVED_EIGENDA_API_BYTE_FOR_RECENCY;
-
+        tracing::info!("RISE: {}:{}", file!(), line!());
         let recency_bytes = self
             .oracle
             .get(PreimageKey::new(
@@ -61,6 +63,7 @@ impl<T: CommsClient + Sync + Send> EigenDAPreimageProvider for OracleEigenDAPrei
             .await
             .map_err(HokuleaOracleProviderError::Preimage)?;
 
+        tracing::info!("RISE: {}:{}", file!(), line!());
         // recency is 8 bytes
         if recency_bytes.is_empty() || recency_bytes.len() != 8 {
             panic!("Preimage returned something, but the returned value is not formatted correctly for recency_bytes");
@@ -78,6 +81,7 @@ impl<T: CommsClient + Sync + Send> EigenDAPreimageProvider for OracleEigenDAPrei
         &mut self,
         altda_commitment: &AltDACommitment,
     ) -> Result<bool, Self::Error> {
+        tracing::info!("RISE: {}:{}", file!(), line!());
         let altda_commitment_bytes = altda_commitment.to_rlp_bytes();
         // hint the host about a new altda commitment. If it is the first time the host receiving it, the
         // host then prepares all the necessary preimage; if not, the host simply returns data from its cache
@@ -86,6 +90,7 @@ impl<T: CommsClient + Sync + Send> EigenDAPreimageProvider for OracleEigenDAPrei
             .await
             .map_err(HokuleaOracleProviderError::Preimage)?;
 
+        tracing::info!("RISE: {}:{}", file!(), line!());
         let mut address_template = altda_commitment.digest_template();
 
         // make the call about validity of a altda commitment
@@ -100,6 +105,7 @@ impl<T: CommsClient + Sync + Send> EigenDAPreimageProvider for OracleEigenDAPrei
             .await
             .map_err(HokuleaOracleProviderError::Preimage)?;
 
+        tracing::info!("RISE: {}:{}", file!(), line!());
         // validity is expected as a boolean
         if validity.is_empty() || validity.len() != 1 {
             panic!("Preimage returned something, but the returned value is not formatted correctly for validity");

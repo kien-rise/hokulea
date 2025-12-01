@@ -64,6 +64,7 @@ pub async fn fetch_eigenda_hint(
     providers: &<SingleChainHostWithEigenDA as OnlineHostBackendCfg>::Providers,
     kv: SharedKeyValueStore,
 ) -> Result<()> {
+    tracing::info!("RISE: {}:{}", file!(), line!());
     let hint_type = hint.ty;
     let altda_commitment_bytes = hint.data;
     trace!(target: "fetcher_with_eigenda_support", "Fetching hint: {hint_type} {altda_commitment_bytes}");
@@ -74,9 +75,11 @@ pub async fn fetch_eigenda_hint(
         .try_into()
         .map_err(|e| anyhow!("failed to parse AltDACommitment: {e}"))?;
 
+    tracing::info!("RISE: {}:{}", file!(), line!());
     store_recency_window(kv.clone(), &altda_commitment, cfg).await?;
 
     // Fetch preimage data and process response
+    tracing::info!("RISE: {}:{}", file!(), line!());
     let derivation_stage = fetch_data_from_proxy(providers, &altda_commitment_bytes).await?;
 
     // If cert does not pass recency check, discard it
@@ -90,6 +93,7 @@ pub async fn fetch_eigenda_hint(
     }
 
     // Write validity status to key-value store
+    tracing::info!("RISE: {}:{}", file!(), line!());
     store_cert_validity(
         kv.clone(),
         &altda_commitment,
@@ -108,6 +112,7 @@ pub async fn fetch_eigenda_hint(
     }
 
     // Store encoded payload data field-by-field in key-value store
+    tracing::info!("RISE: {}:{}", file!(), line!());
     store_encoded_payload(
         kv.clone(),
         &altda_commitment,
@@ -143,7 +148,7 @@ async fn store_recency_window(
 
 /// Currently Hokulea hosts relies on Eigenda-proxy for preimage retrieval.
 /// It relies on the [DerivationError] status code returned by the proxy to decide when to stop retrieving
-/// data and return early.  
+/// data and return early.
 #[derive(Debug, Clone)]
 pub struct ProxyDerivationStage {
     // proxy derivation determines recency test is passed
@@ -160,6 +165,7 @@ async fn fetch_data_from_proxy(
     altda_commitment_bytes: &Bytes,
 ) -> Result<ProxyDerivationStage> {
     // Fetch the encoded payload from the eigenda network
+    tracing::info!("RISE: {}:{}", file!(), line!());
     let response = providers
         .eigenda_preimage_provider
         .fetch_eigenda_encoded_payload(altda_commitment_bytes)
@@ -173,6 +179,7 @@ async fn fetch_data_from_proxy(
     // Handle response based on status code
     if !response.status().is_success() {
         // Handle non-success response
+        tracing::info!("RISE: {}:{}", file!(), line!());
         if response.status().as_u16() != HTTP_RESPONSE_STATUS_CODE_TEAPOT {
             // The error is handled by host library in kona, currently this triggers an infinite retry loop.
             // https://github.com/op-rs/kona/blob/98543fe6d91f755b2383941391d93aa9bea6c9ab/bin/host/src/backend/online.rs#L135
@@ -183,11 +190,13 @@ async fn fetch_data_from_proxy(
         }
 
         // Handle teapot (418) status code with DerivationError
+        tracing::info!("RISE: {}:{}", file!(), line!());
         let status_code: DerivationError = response
             .json()
             .await
             .map_err(|e| anyhow!("failed to deserialize 418 body: {e}"))?;
 
+        tracing::info!("RISE: {}:{}", file!(), line!());
         match status_code.into() {
             HostHandlerError::HokuleaPreimageError(c) => match c {
                 HokuleaPreimageError::InvalidCert => is_valid_cert = false,
@@ -201,6 +210,7 @@ async fn fetch_data_from_proxy(
         }
     } else {
         // Handle success response
+        tracing::info!("RISE: {}:{}", file!(), line!());
         encoded_payload = response
             .bytes()
             .await
