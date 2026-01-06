@@ -195,7 +195,11 @@ async fn get_sp1_cc_proof(
 
     let network_mode = match sp1_cc_proof_strategy {
         FulfillmentStrategy::UnspecifiedFulfillmentStrategy => {
-            anyhow::bail!("The sp1-cc proof fulfillment strategy must be specified")
+            warn!("FulfillmentStrategy::UnspecifiedFulfillmentStrategy is set, using CPU prover");
+            let client = ProverClient::builder().cpu().build();
+            let (pk, _vk) = client.setup(ELF);
+            let proof = client.prove(&pk, &stdin).compressed().run().unwrap();
+            return Ok(proof);
         }
         FulfillmentStrategy::Hosted | FulfillmentStrategy::Reserved => NetworkMode::Reserved,
         FulfillmentStrategy::Auction => NetworkMode::Mainnet,
