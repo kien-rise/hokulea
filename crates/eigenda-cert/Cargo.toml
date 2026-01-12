@@ -3,6 +3,9 @@ name = "eigenda-cert"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+rkyv = ["dep:rkyv", "alloy-primitives/rkyv"]
+
 [dependencies]
 alloy-primitives = { workspace = true, features = ["rlp", "serde"] }
 alloy-rlp = { workspace = true, features = ["derive"] }
@@ -10,4 +13,5 @@ serde = { workspace = true, features = ["derive"] }
 canoe-bindings = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
+rkyv = { workspace = true, optional = true }
 

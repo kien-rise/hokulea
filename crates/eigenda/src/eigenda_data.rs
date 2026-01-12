@@ -14,6 +14,10 @@ use serde::{Deserialize, Serialize};
 pub type Payload = Bytes;
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 // [EigenDAWitness] requires serde for EncodedPayload
 /// intended for deriving rollup channel frame from eigenda encoded payload
 pub struct EncodedPayload {

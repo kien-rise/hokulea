@@ -10,6 +10,7 @@ alloy-primitives = { workspace = true}
 tracing.workspace = true
 async-trait.workspace = true
 kona-protocol.workspace = true
+rkyv = { workspace = true, optional = true }
 thiserror.workspace = true
 serde = { workspace = true, features = ["derive"] }
 
@@ -23,6 +24,7 @@ alloy-rlp = { workspace = true }
 rust-kzg-bn254-primitives.workspace = true
 
 [features]
+rkyv = ["dep:rkyv", "eigenda-cert/rkyv"]
 serde = [
   "kona-protocol/serde",
 ]

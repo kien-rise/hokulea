@@ -66,6 +66,10 @@ pub struct EigenDAPreimage {
 /// match, and otherwise there is failures. See PreloadedEigenDAPreimageProvider
 /// for more information
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct EigenDAWitness {
     /// validity of a da cert
     pub validities: Vec<(AltDACommitment, bool)>,

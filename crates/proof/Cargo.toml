@@ -4,6 +4,9 @@ description = "Eigenda Proof SDK"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+rkyv = ["dep:rkyv", "eigenda-cert/rkyv", "hokulea-eigenda/rkyv"]
+
 [dependencies]
 kona-preimage.workspace = true
 kona-proof.workspace = true
@@ -22,12 +25,13 @@ alloy-primitives.workspace = true
 
 # General
 async-trait.workspace = true
+rkyv = { workspace = true, optional = true }
 serde.workspace = true
 thiserror.workspace = true
 
 # Canoe
-canoe-verifier = { workspace = true } 
-canoe-verifier-address-fetcher = { workspace = true } 
+canoe-verifier = { workspace = true }
+canoe-verifier-address-fetcher = { workspace = true }
 
 [dev-dependencies]
 hokulea-compute-proof.workspace = true

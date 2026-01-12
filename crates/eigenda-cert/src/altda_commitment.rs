@@ -10,6 +10,10 @@ use serde::{Deserialize, Serialize};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub enum EigenDAVersionedCert {
     /// V2
     V2(EigenDACertV2),
@@ -36,6 +40,10 @@ pub enum AltDACommitmentParseError {
 /// AltDACommitment contains EigenDA cert, and is used as a part of key to uniquely
 /// address the preimage data including: cert validity, field elements
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct AltDACommitment {
     /// <https://specs.optimism.io/experimental/alt-da.html#input-commitment-submission>
     /// 0 for keccak, 1 for da-service

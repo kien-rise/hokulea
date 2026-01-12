@@ -19,6 +19,10 @@ pub use v4_cert::EigenDACertV4;
 
 // G1Point represents a point on the BN254 G1 curve
 #[derive(Debug, Clone, Copy, RlpEncodable, RlpDecodable, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct G1Point {
     //pub x: [u8; 32],
     pub x: U256,
@@ -35,10 +39,18 @@ impl G1Point {
 }
 
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct Fp2(pub U256, pub U256);
 
 // G2Point represents a point on the BN254 G2 curve
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct G2Point {
     pub x: Fp2,
     pub y: Fp2,
@@ -60,6 +72,10 @@ impl G2Point {
 
 // BlobCommitment contains commitment information for a blob
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct BlobCommitment {
     pub commitment: G1Point,
     pub length_commitment: G2Point,
@@ -82,6 +98,10 @@ impl BlobCommitment {
 // This version is separate from the cert Version. For example, Cert V3 can use BlobHeaderV2
 // since V2 is a tag for EigenDA protocol
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct BlobHeaderV2 {
     pub version: u16,
     pub quorum_numbers: Bytes,
@@ -102,6 +122,10 @@ impl BlobHeaderV2 {
 
 // BlobCertificate contains certification information for a blob
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct BlobCertificate {
     pub blob_header: BlobHeaderV2,
     pub signature: Bytes,
@@ -120,6 +144,10 @@ impl BlobCertificate {
 
 /// BlobInclusionInfo contains inclusion proof information for a blob
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct BlobInclusionInfo {
     pub blob_certificate: BlobCertificate,
     pub blob_index: u32,
@@ -132,12 +160,20 @@ pub struct BlobInclusionInfo {
 /// matching the same variable name for its solidity part.
 /// <https://github.com/Layr-Labs/eigenda/blob/510291b9be38cacbed8bc62125f6f9a14bd604e4/contracts/src/core/libraries/v2/EigenDATypesV2.sol#L47>
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct BatchHeaderV2 {
     pub batch_root: [u8; 32],
     pub reference_block_number: u32,
 }
 /// NonSignerStakesAndSignature contains information about non-signers and their stakes
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct NonSignerStakesAndSignature {
     pub non_signer_quorum_bitmap_indices: Vec<u32>,
     pub non_signer_pubkeys: Vec<G1Point>,
