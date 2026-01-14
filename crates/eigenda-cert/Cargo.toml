@@ -5,6 +5,7 @@ edition = "2021"
 
 [features]
 rkyv = ["dep:rkyv", "alloy-primitives/rkyv"]
+bytecheck = ["rkyv", "rkyv/bytecheck"]
 
 [dependencies]
 alloy-primitives = { workspace = true, features = ["rlp", "serde"] }
@@ -14,4 +15,3 @@ canoe-bindings = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 rkyv = { workspace = true, optional = true }
-

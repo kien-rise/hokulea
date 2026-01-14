@@ -6,6 +6,7 @@ edition = "2021"
 
 [features]
 rkyv = ["dep:rkyv", "eigenda-cert/rkyv", "hokulea-eigenda/rkyv"]
+bytecheck = ["rkyv", "rkyv/bytecheck"]
 
 [dependencies]
 kona-preimage.workspace = true
