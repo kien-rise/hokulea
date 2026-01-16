@@ -10,16 +10,16 @@ use rsp_primitives::genesis::genesis_from_json;
 use sp1_cc_client_executor::ContractInput;
 use sp1_cc_host_executor::{EvmSketch, Genesis};
 use sp1_sdk::{
-    network::{FulfillmentStrategy, NetworkMode},
-    Prover, ProverClient, SP1Proof, SP1ProofMode, SP1ProofWithPublicValues, SP1Stdin,
-    SP1_CIRCUIT_VERSION,
+    network::NetworkMode, Prover, ProverClient, SP1Proof, SP1ProofMode, SP1ProofWithPublicValues,
+    SP1Stdin, SP1_CIRCUIT_VERSION,
 };
 use tracing::{debug, info, warn};
 
-use std::{
-    env,
-    time::{Duration, Instant},
-};
+use std::{env, str::FromStr, time::Instant};
+
+use crate::sdk::{NetworkProveBuilderOverrides, NetworkProveBuilderOverridesTrait};
+
+mod sdk;
 
 /// The ELF we want to execute inside the zkVM.
 pub const ELF: &[u8] = include_bytes!("../../elf/canoe-sp1-cc-client");
@@ -173,26 +173,15 @@ pub async fn generate_canoe_proof(
     mock_mode: bool,
 ) -> Result<SP1ProofWithPublicValues> {
     // Create a `NetworkProver`.
-    let sp1_cc_proof_strategy = match env::var("SP1_CC_PROOF_STRATEGY")
-        .ok()
-        .filter(|s| !s.is_empty())
-    {
-        Some(raw) => FulfillmentStrategy::from_str_name(&raw.to_uppercase())
-            .ok_or_else(|| anyhow::anyhow!("Invalid FulfillmentStrategy: {raw}"))?,
-        None => {
-            if !mock_mode {
-                warn!("SP1_CC_PROOF_STRATEGY not set; using Reserved as the default strategy");
-            }
-            FulfillmentStrategy::Reserved
+    let network_mode = match env::var("SP1_CC_NETWORK_MODE") {
+        Ok(s) => NetworkMode::from_str(&s).map_err(anyhow::Error::msg)?,
+        Err(_) => {
+            warn!(
+                "SP1_CC_NETWORK_MODE is not set, using default: {:?}",
+                NetworkMode::default()
+            );
+            NetworkMode::default()
         }
-    };
-
-    let network_mode = match sp1_cc_proof_strategy {
-        FulfillmentStrategy::UnspecifiedFulfillmentStrategy => {
-            anyhow::bail!("The sp1-cc proof fulfillment strategy must be specified")
-        }
-        FulfillmentStrategy::Hosted | FulfillmentStrategy::Reserved => NetworkMode::Reserved,
-        FulfillmentStrategy::Auction => NetworkMode::Mainnet,
     };
 
     let network_private_key = env::var("NETWORK_PRIVATE_KEY").unwrap_or_else(|_| {
@@ -227,42 +216,11 @@ pub async fn generate_canoe_proof(
             SP1_CIRCUIT_VERSION,
         )
     } else {
-        // Generate the proof for the given program and input.
-        let cycle_limit: u64 = match env::var("SP1_CC_CYCLE_LIMIT") {
-            Ok(raw) if !raw.is_empty() => raw.parse()?,
-            _ => 1_000_000_000_000,
-        };
-
-        let gas_limit: u64 = match env::var("SP1_CC_GAS_LIMIT") {
-            Ok(raw) if !raw.is_empty() => raw.parse()?,
-            _ => 1_000_000_000_000,
-        };
-
-        let timeout_seconds: u64 = match env::var("SP1_CC_TIMEOUT_SECONDS") {
-            Ok(raw) if !raw.is_empty() => raw.parse()?,
-            _ => 4 * 60 * 60,
-        };
-
-        let mut proof_builder = client
+        let overrides = NetworkProveBuilderOverrides::from_env("SP1_CC")?;
+        let proof = client
             .prove(&pk, &stdin)
             .compressed()
-            .strategy(sp1_cc_proof_strategy)
-            .timeout(Duration::from_secs(timeout_seconds));
-
-        if cycle_limit > 0 && gas_limit > 0 {
-            proof_builder = proof_builder
-                .skip_simulation(true)
-                .cycle_limit(cycle_limit)
-                .gas_limit(gas_limit);
-        } else {
-            assert!(
-                cycle_limit == 0 && gas_limit == 0,
-                "cycle_limit and gas_limit must both be zero or both be non-zero"
-            );
-            proof_builder = proof_builder.skip_simulation(false);
-        }
-
-        let proof = proof_builder
+            .with_overrides(overrides)
             .run()
             .expect("sp1-cc should have produced a compressed proof");
 
