@@ -101,6 +101,11 @@ pub async fn canoe_proof_stdin(
     canoe_inputs: &[CanoeInput],
     eth_rpc_client: RpcClient,
 ) -> Result<SP1Stdin> {
+    debug!(
+        "canoe_proof_stdin: entering with {} canoe_inputs",
+        canoe_inputs.len()
+    );
+
     // ensure chain id and l1 block number across all DAcerts are identical
     let l1_chain_id = canoe_inputs[0].l1_chain_id;
 
@@ -165,6 +170,8 @@ pub async fn canoe_proof_stdin(
     let mut stdin = SP1Stdin::new();
     stdin.write(&input_bytes);
     stdin.write(&canoe_inputs);
+
+    debug!("canoe_proof_stdin: exiting successfully");
     Ok(stdin)
 }
 
@@ -172,6 +179,11 @@ pub async fn generate_canoe_proof(
     stdin: SP1Stdin,
     mock_mode: bool,
 ) -> Result<SP1ProofWithPublicValues> {
+    debug!(
+        "generate_canoe_proof: entering with mock_mode={}",
+        mock_mode
+    );
+
     // Create a `NetworkProver`.
     let network_mode = match env::var("SP1_CC_NETWORK_MODE") {
         Ok(s) => NetworkMode::from_str(&s).map_err(anyhow::Error::msg)?,
@@ -229,6 +241,7 @@ pub async fn generate_canoe_proof(
         proof
     };
 
+    debug!("generate_canoe_proof: exiting successfully");
     Ok(proof)
 }
 
@@ -237,6 +250,12 @@ async fn get_sp1_cc_proof(
     eth_rpc_client: RpcClient,
     mock_mode: bool,
 ) -> Result<sp1_sdk::SP1ProofWithPublicValues> {
+    debug!(
+        "get_sp1_cc_proof: entering with {} canoe_inputs, mock_mode={}",
+        canoe_inputs.len(),
+        mock_mode
+    );
+
     let start = Instant::now();
     info!(
         "begin to generate a sp1-cc proof for {} number of altda commitment at l1 block number {} with chainID {}",
@@ -260,5 +279,7 @@ async fn get_sp1_cc_proof(
         "sp1-cc commited: in elapsed_time {:?}",
         elapsed,
     );
+
+    debug!("get_sp1_cc_proof: exiting successfully");
     Ok(proof)
 }
