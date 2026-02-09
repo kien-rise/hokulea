@@ -64,7 +64,7 @@ pub async fn fetch_eigenda_hint(
 ) -> Result<()> {
     let hint_type = hint.ty;
     let altda_commitment_bytes = hint.data;
-    trace!(target: "fetcher_with_eigenda_support", "Fetching hint: {hint_type} {altda_commitment_bytes}");
+    trace!(target: "fetcher_with_eigenda_support", "Fetching hint: {hint_type:?} {altda_commitment_bytes}");
 
     // Convert commitment bytes to AltDACommitment
     let altda_commitment: AltDACommitment = altda_commitment_bytes

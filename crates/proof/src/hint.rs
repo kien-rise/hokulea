@@ -1,11 +1,8 @@
 //! This module contains the [ExtendedHintType], which adds an EigenDACommitment case to kona's [HintType] enum.
 
-use alloc::{string::String, vec::Vec};
-use alloy_primitives::hex;
-use core::fmt::Display;
-use kona_proof::{errors::HintParsingError, HintType};
-
-use alloc::str::FromStr;
+use alloc::vec::Vec;
+use alloy_primitives::Bytes;
+use kona_proof::HintType;
 
 /// The [ExtendedHintType] extends the [HintType] enum and is used to specify the type of hint that was received.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -14,38 +11,38 @@ pub enum ExtendedHintType {
     EigenDACert,
 }
 
+impl From<ExtendedHintType> for u8 {
+    fn from(v: ExtendedHintType) -> Self {
+        match v {
+            ExtendedHintType::Original(h) => h.into(),
+            ExtendedHintType::EigenDACert => 0xda,
+        }
+    }
+}
+
+impl TryFrom<u8> for ExtendedHintType {
+    type Error = u8;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0xda => Ok(ExtendedHintType::EigenDACert),
+            other => {
+                let original = HintType::try_from(other)?;
+                Ok(ExtendedHintType::Original(original))
+            }
+        }
+    }
+}
+
 impl ExtendedHintType {
     /// Encodes the hint type as a string.
-    pub fn encode_with(&self, data: &[&[u8]]) -> String {
-        let concatenated = hex::encode(data.iter().copied().flatten().copied().collect::<Vec<_>>());
-        alloc::format!("{self} {concatenated}")
-    }
-}
-
-impl FromStr for ExtendedHintType {
-    type Err = HintParsingError;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match value {
-            "eigenda-certificate" => Ok(Self::EigenDACert),
-
-            _ => Ok(Self::Original(HintType::from_str(value)?)),
+    pub fn encode_with(&self, data: &[&[u8]]) -> Bytes {
+        let total_len = 1 + data.iter().map(|d| d.len()).sum::<usize>();
+        let mut buffer = Vec::with_capacity(total_len);
+        buffer.push(u8::from(self.clone()));
+        for slice in data {
+            buffer.extend_from_slice(slice);
         }
-    }
-}
-
-impl From<ExtendedHintType> for &str {
-    fn from(value: ExtendedHintType) -> Self {
-        match value {
-            ExtendedHintType::EigenDACert => "eigenda-certificate",
-            ExtendedHintType::Original(hint_type) => hint_type.into(),
-        }
-    }
-}
-
-impl Display for ExtendedHintType {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let s: &str = (*self).into();
-        write!(f, "{s}")
+        Bytes::from(buffer)
     }
 }
