@@ -4858,6 +4858,7 @@ dependencies = [
  "spin 0.10.0",
  "thiserror 2.0.18",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -4918,6 +4919,7 @@ dependencies = [
  "kona-derive",
  "kona-preimage",
  "kona-proof",
+ "tracing",
 ]
 
 [[package]]

@@ -57,10 +57,12 @@ impl CanoeVerifier for CanoeSp1CCVerifier {
             if #[cfg(target_os = "zkvm")] {
                 use sha2::{Digest, Sha256};
                 use sp1_lib::verify::verify_sp1_proof;
-                use tracing::warn;
+                use tracing::{debug, warn};
 
                 // while transforming to journal bytes, it verifies if chain config hash is correctly set
+                debug!("sp1-cc: serializing {} cert-validity pairs to journal bytes", cert_validity_pair.len());
                 let journals_bytes = self.to_journals_bytes(cert_validity_pair);
+                debug!("sp1-cc: journal bytes length: {}", journals_bytes.len());
 
                 // if not in dev mode, the receipt should be empty
                 if canoe_proof_bytes.is_some() {
@@ -68,10 +70,13 @@ impl CanoeVerifier for CanoeSp1CCVerifier {
                     warn!("sp1-cc verification within zkvm requires proof being provided via zkVM stdin");
                 }
                 // used within zkVM
-                let public_values_digest = Sha256::digest(journals_bytes);
+                let public_values_digest = Sha256::digest(&journals_bytes);
+                debug!("sp1-cc: public values digest: {:?}", public_values_digest);
                 // the function will panic if the proof is incorrect
                 // https://github.com/succinctlabs/sp1/blob/011d2c64808301878e6f0375c3596b3e22e53949/crates/zkvm/lib/src/verify.rs#L3
+                debug!("sp1-cc: calling verify_sp1_proof");
                 verify_sp1_proof(&V_KEY, &public_values_digest.into());
+                debug!("sp1-cc: verify_sp1_proof passed");
                 Ok(())
             } else {
                 panic!("CanoeSp1CCVerifier should only be used for secure integration whose validation happens in zkVM");

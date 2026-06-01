@@ -57,11 +57,24 @@ impl PreloadedEigenDAPreimageProvider {
             canoe_proof_bytes,
         } = witness_with_trusted_data.witness;
 
+        tracing::debug!(
+            validities = validities.len(),
+            encoded_payloads = encoded_payloads.len(),
+            canoe_proof_bytes = canoe_proof_bytes.as_ref().map_or(0, |b| b.len()),
+            "from_witness: start",
+        );
+
         // check number of element invariants
         assert!(validities.len() >= encoded_payloads.len());
 
         // check all encoded payload having correct number of field elements compared to the number from altda commitment
-        for (altda_commitment, encoded_payload, _) in &encoded_payloads {
+        for (i, (altda_commitment, encoded_payload, _)) in encoded_payloads.iter().enumerate() {
+            tracing::debug!(
+                i,
+                num_field_element = encoded_payload.num_field_element(),
+                expected = altda_commitment.get_num_field_element(),
+                "from_witness: encoded_payload field element check",
+            );
             assert_eq!(
                 encoded_payload.num_field_element(),
                 altda_commitment.get_num_field_element()
@@ -71,6 +84,7 @@ impl PreloadedEigenDAPreimageProvider {
         // if the number of da cert is non-zero, verify the single canoe proof, regardless if the
         // da cert is valid or not. Otherwise, skip the verification
         if !validities.is_empty() {
+            tracing::debug!(certs = validities.len(), "from_witness: running canoe verification");
             // construct cert validity
             let cert_validities = validities
                 .iter()
@@ -81,6 +95,11 @@ impl PreloadedEigenDAPreimageProvider {
                             &altda_commitment.versioned_cert,
                         )
                         .expect("should be able to get verifier address");
+                    tracing::debug!(
+                        claimed_validity,
+                        ?verifier_address_fetched,
+                        "from_witness: cert",
+                    );
                     let cert_validity = CertValidity {
                         l1_head_block_hash: witness_with_trusted_data.l1_head_block_hash,
                         l1_chain_id: witness_with_trusted_data.l1_chain_id,
@@ -97,11 +116,15 @@ impl PreloadedEigenDAPreimageProvider {
             canoe_verifier
                 .validate_cert_receipt(cert_validities, canoe_proof_bytes)
                 .expect("verification should have been passing");
+            tracing::debug!("from_witness: canoe verification passed");
+        } else {
+            tracing::debug!("from_witness: no certs, skipping canoe verification");
         }
 
         // check all altda commitment validity are supported by zk validity proof
         let mut validity_entries: Vec<_> = validities.into_iter().collect();
 
+        tracing::debug!(count = encoded_payloads.len(), "from_witness: running batch_verify");
         assert!(batch_verify(
             encoded_payloads.iter().map(|(_, ep, _)| ep.serialize()),
             encoded_payloads
@@ -109,6 +132,7 @@ impl PreloadedEigenDAPreimageProvider {
                 .map(|(ac, _, _)| ac.get_kzg_commitment()),
             encoded_payloads.iter().map(|(_, _, p)| *p),
         ));
+        tracing::debug!("from_witness: batch_verify passed");
 
         // batch_verify passed; now populate entries (avoids cloning on verification failure)
         let mut encoded_payload_entries: Vec<_> = encoded_payloads
@@ -123,6 +147,11 @@ impl PreloadedEigenDAPreimageProvider {
         validity_entries.reverse();
         encoded_payload_entries.reverse();
 
+        tracing::debug!(
+            validity_entries = validity_entries.len(),
+            encoded_payload_entries = encoded_payload_entries.len(),
+            "from_witness: done",
+        );
         PreloadedEigenDAPreimageProvider {
             validity_entries,
             encoded_payload_entries,

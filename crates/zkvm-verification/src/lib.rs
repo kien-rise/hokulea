@@ -38,18 +38,26 @@ where
     O: CommsClient + FlushableCache + Send + Sync + Debug,
 {
     let l1_head = boot_info.l1_head;
+    tracing::debug!(?l1_head, "eigenda_witness_to_preloaded_provider: start");
 
     // fetch timestamp and block number corresponding to l1_head for determining activation fork.
     let mut l1_oracle_provider = OracleL1ChainProvider::new(l1_head, oracle);
+    tracing::debug!("eigenda_witness_to_preloaded_provider: fetching header for l1_head from oracle");
     let header = l1_oracle_provider
         .header_by_hash(l1_head)
         .await
         .expect("should be able to get header for l1 header using oracle");
+    tracing::debug!(number = header.number, timestamp = header.timestamp, "eigenda_witness_to_preloaded_provider: got l1 header");
 
     // it is critical that some field of the witness is populated inside the zkVM using known truth within the zkVM.
     // All the data from the oracle has been verified, by Kailua and OP-succincts
     // For kailua, the check is at https://github.com/boundless-xyz/kailua/blob/2414297a5f9feb98365ef6d88634bcd181a1934b/crates/kona/src/client/stateless.rs#L61
     // For op-succinct, the check is at https://github.com/succinctlabs/op-succinct/blob/b0f190e634ab5b03a3028d4ef88e207186b48337/programs/range/eigenda/src/main.rs#L32
+    tracing::debug!(
+        validities = witness.validities.len(),
+        encoded_payloads = witness.encoded_payloads.len(),
+        "eigenda_witness_to_preloaded_provider: witness counts",
+    );
     let witness_with_trusted_data = EigenDAWitnessWithTrustedData {
         l1_head_block_hash: l1_head,
         l1_head_block_number: header.number,
@@ -57,7 +65,14 @@ where
         l1_chain_id: boot_info.rollup_config.l1_chain_id,
         witness,
     };
+    tracing::debug!(
+        l1_chain_id = witness_with_trusted_data.l1_chain_id,
+        block_number = witness_with_trusted_data.l1_head_block_number,
+        block_timestamp = witness_with_trusted_data.l1_head_block_timestamp,
+        "eigenda_witness_to_preloaded_provider: constructed EigenDAWitnessWithTrustedData",
+    );
 
+    tracing::debug!("eigenda_witness_to_preloaded_provider: calling PreloadedEigenDAPreimageProvider::from_witness");
     Ok(PreloadedEigenDAPreimageProvider::from_witness(
         witness_with_trusted_data,
         canoe_verifier,

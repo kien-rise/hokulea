@@ -31,6 +31,7 @@ thiserror.workspace = true
 # Canoe
 canoe-verifier.workspace = true
 canoe-verifier-address-fetcher.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 hokulea-compute-proof.workspace = true
@@ -40,7 +41,7 @@ tokio = { workspace = true, features = ["full"] }
 spin.workspace = true
 
 [features]
-default = []
+default = ["sp1-bn-verifier"]
 # Use the substrate-bn (sp1-patches/bn) batch KZG verifier instead of the arkworks-based
 # rust-kzg-bn254-verifier. Intended for zkVM clients where the patched bn primitives win.
 sp1-bn-verifier = ["dep:hokulea-sp1-bn-verifier"]
