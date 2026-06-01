@@ -280,16 +280,31 @@ pub fn evaluate_polynomial_in_evaluation_form(
         polynomial.len(),
         blob_size
     );
-    let roots_of_unity = calculate_roots_of_unity(blob_size as u64)?;
+    let roots_of_unity = calculate_roots_of_unity(blob_size as u64).map_err(|e| {
+        tracing::debug!(
+            "evaluate_polynomial_in_evaluation_form: calculate_roots_of_unity failed: {:?}",
+            e
+        );
+        e
+    })?;
 
     if polynomial.len() != roots_of_unity.len() {
+        tracing::debug!(
+            "evaluate_polynomial_in_evaluation_form: length mismatch: poly={} roots={}",
+            polynomial.len(),
+            roots_of_unity.len()
+        );
         return Err(KzgError::InvalidInputLength);
     }
 
     let width = polynomial.len();
-    let inverse_width = fr_from_usize(width)
-        .inverse()
-        .ok_or(KzgError::InvalidDenominator)?;
+    let inverse_width = fr_from_usize(width).inverse().ok_or_else(|| {
+        tracing::debug!(
+            "evaluate_polynomial_in_evaluation_form: inverse_width is zero (width={})",
+            width
+        );
+        KzgError::InvalidDenominator
+    })?;
 
     if let Some(idx) = roots_of_unity.iter().position(|d| *d == *z) {
         tracing::debug!(
@@ -300,7 +315,13 @@ pub fn evaluate_polynomial_in_evaluation_form(
             .evaluations()
             .get(idx)
             .copied()
-            .ok_or_else(|| KzgError::GenericError("polynomial element missing".to_string()));
+            .ok_or_else(|| {
+                tracing::debug!(
+                    "evaluate_polynomial_in_evaluation_form: polynomial element missing at index {}",
+                    idx
+                );
+                KzgError::GenericError("polynomial element missing".to_string())
+            });
     }
 
     tracing::debug!(
@@ -312,14 +333,23 @@ pub fn evaluate_polynomial_in_evaluation_form(
         let a = *f_i * *domain_i;
         let b = *z - *domain_i;
         if b.is_zero() {
+            tracing::debug!(
+                "evaluate_polynomial_in_evaluation_form: division by zero in barycentric evaluation"
+            );
             return Err(KzgError::GenericError(
                 "Division by zero in barycentric evaluation".to_string(),
             ));
         }
-        sum = sum + a * b.inverse().ok_or(KzgError::InvalidDenominator)?;
+        sum = sum + a * b.inverse().ok_or_else(|| {
+            tracing::debug!(
+                "evaluate_polynomial_in_evaluation_form: b.inverse() returned None"
+            );
+            KzgError::InvalidDenominator
+        })?;
     }
 
     let r = z.pow(fr_from_usize(width)) - Fr::one();
+    tracing::debug!("evaluate_polynomial_in_evaluation_form: barycentric evaluation complete");
     Ok(sum * r * inverse_width)
 }
 
@@ -433,9 +463,27 @@ pub fn compute_challenges_and_evaluate_polynomial(
     );
     let mut zs = Vec::with_capacity(blobs_data.len());
     let mut ys = Vec::with_capacity(blobs_data.len());
-    for (poly, commit) in blobs_data.iter().zip(commitments.iter()) {
-        let z = compute_challenge(poly, commit)?;
-        let y = evaluate_polynomial_in_evaluation_form(poly, &z)?;
+    for (i, (poly, commit)) in blobs_data.iter().zip(commitments.iter()).enumerate() {
+        let z = compute_challenge(poly, commit).map_err(|e| {
+            tracing::debug!(
+                "compute_challenges_and_evaluate_polynomial: compute_challenge failed for blob {}: {:?}",
+                i, e
+            );
+            e
+        })?;
+        let y = evaluate_polynomial_in_evaluation_form(poly, &z);
+        tracing::debug!(
+            "compute_challenges_and_evaluate_polynomial: evaluate_polynomial result for blob {}: {}",
+            i,
+            if y.is_ok() { "ok" } else { "err" }
+        );
+        let y = y.map_err(|e| {
+            tracing::debug!(
+                "compute_challenges_and_evaluate_polynomial: evaluate_polynomial_in_evaluation_form failed for blob {}: {:?}",
+                i, e
+            );
+            e
+        })?;
         zs.push(z);
         ys.push(y);
     }

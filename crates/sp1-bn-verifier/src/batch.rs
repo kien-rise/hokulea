@@ -64,7 +64,15 @@ pub fn batch_verify(
     commitments: impl Iterator<Item = G1Point>,
     proofs: impl Iterator<Item = FixedBytes<64>>,
 ) -> bool {
-    verify_blob_kzg_proof_batch(blobs, commitments, proofs).unwrap_or(false)
+    let result = verify_blob_kzg_proof_batch(blobs, commitments, proofs);
+    tracing::debug!(
+        "batch_verify: verify_blob_kzg_proof_batch result: {}",
+        if result.is_ok() { "ok" } else { "err" }
+    );
+    result.unwrap_or_else(|e| {
+        tracing::debug!("batch_verify: verify_blob_kzg_proof_batch failed: {:?}", e);
+        false
+    })
 }
 
 /// Verbose result variant of [`batch_verify`].
@@ -111,7 +119,18 @@ pub fn verify_blob_kzg_proof_batch(
     }
 
     tracing::debug!("verify_blob_kzg_proof_batch: computing challenges and evaluating polynomials");
-    let (zs, ys) = compute_challenges_and_evaluate_polynomial(&polys, &commitments_aff)?;
+    let challenges_result = compute_challenges_and_evaluate_polynomial(&polys, &commitments_aff);
+    tracing::debug!(
+        "verify_blob_kzg_proof_batch: compute_challenges_and_evaluate_polynomial result: {}",
+        if challenges_result.is_ok() { "ok" } else { "err" }
+    );
+    let (zs, ys) = challenges_result.map_err(|e| {
+        tracing::debug!(
+            "verify_blob_kzg_proof_batch: compute_challenges_and_evaluate_polynomial failed: {:?}",
+            e
+        );
+        e
+    })?;
     tracing::debug!(
         "verify_blob_kzg_proof_batch: got {} z/y challenge pairs",
         zs.len()
