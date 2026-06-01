@@ -4888,6 +4888,7 @@ dependencies = [
  "spin 0.10.0",
  "substrate-bn 0.6.0 (git+https://github.com/sp1-patches/bn?rev=8ef05d3969312eca34fa9f1f566a469022badda6)",
  "thiserror 2.0.18",
+ "tracing",
 ]
 
 [[package]]

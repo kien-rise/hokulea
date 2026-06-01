@@ -73,23 +73,36 @@ pub fn verify_blob_kzg_proof_batch(
     commitments: impl Iterator<Item = G1Point>,
     proofs: impl Iterator<Item = FixedBytes<64>>,
 ) -> Result<bool, KzgError> {
+    tracing::debug!("verify_blob_kzg_proof_batch: converting blobs to polynomials");
     let polys: Vec<PolynomialEvalForm> = blobs
         .map(|b| PolynomialEvalForm::new(to_fr_array_canonical(b.as_ref())?))
         .collect::<Result<Vec<_>, KzgError>>()?;
+    tracing::debug!(
+        "verify_blob_kzg_proof_batch: {} polynomial(s) collected",
+        polys.len()
+    );
 
     // The empty batch is vacuously valid. Short-circuit before calling into substrate-bn:
     // `AffineG1::msm` panics on a zero-length slice, and the reference verifier accepts
     // the empty case (the equation `e(0, [τ]) = e(0, G)` is `1 = 1`).
     if polys.is_empty() {
+        tracing::debug!("verify_blob_kzg_proof_batch: empty batch, returning true");
         return Ok(true);
     }
 
+    tracing::debug!("verify_blob_kzg_proof_batch: converting commitments to affine points");
     let commitments_aff: Vec<AffineG1> = commitments
         .map(|c| g1_point_to_affine(&c))
         .collect::<Result<Vec<_>, _>>()?;
+    tracing::debug!("verify_blob_kzg_proof_batch: converting proofs to affine points");
     let proofs_aff: Vec<AffineG1> = proofs
         .map(|p| proof_bytes_to_affine(&p))
         .collect::<Result<Vec<_>, _>>()?;
+    tracing::debug!(
+        "verify_blob_kzg_proof_batch: {} commitment(s), {} proof(s)",
+        commitments_aff.len(),
+        proofs_aff.len()
+    );
 
     if commitments_aff.len() != polys.len() || proofs_aff.len() != polys.len() {
         return Err(KzgError::GenericError(
@@ -97,7 +110,12 @@ pub fn verify_blob_kzg_proof_batch(
         ));
     }
 
+    tracing::debug!("verify_blob_kzg_proof_batch: computing challenges and evaluating polynomials");
     let (zs, ys) = compute_challenges_and_evaluate_polynomial(&polys, &commitments_aff)?;
+    tracing::debug!(
+        "verify_blob_kzg_proof_batch: got {} z/y challenge pairs",
+        zs.len()
+    );
 
     // Per-blob padded polynomial length, in field elements. The FS transcript binds these,
     // so a verifier hands the prover a transcript that depends on each blob's length.
@@ -176,6 +194,10 @@ fn verify_kzg_proof_batch(
         ));
     }
 
+    tracing::debug!(
+        "verify_kzg_proof_batch: validating {} commitment(s) and proof(s)",
+        commitments.len()
+    );
     for c in commitments {
         validate_g1_point(&(*c).into())?;
     }
@@ -184,9 +206,11 @@ fn verify_kzg_proof_batch(
     }
 
     let n = commitments.len();
+    tracing::debug!("verify_kzg_proof_batch: computing r_powers for n={}", n);
     let r_powers = compute_r_powers(commitments, zs, ys, proofs, blob_lengths)?;
 
     // Σ rᵢ · proofᵢ
+    tracing::debug!("verify_kzg_proof_batch: computing proof_lincomb");
     let proof_lincomb = g1_lincomb(proofs, &r_powers)?;
 
     // Build [Cᵢ - yᵢ·G] in affine, plus rᵢ·zᵢ scalars.
@@ -209,6 +233,7 @@ fn verify_kzg_proof_batch(
         r_times_z.push(r_powers[i] * zs[i]);
     }
 
+    tracing::debug!("verify_kzg_proof_batch: computing proof_z_lincomb and c_minus_y_lincomb");
     let proof_z_lincomb = g1_lincomb(proofs, &r_times_z)?;
     let c_minus_y_lincomb = g1_lincomb(&c_minus_y, &r_powers)?;
 
@@ -216,5 +241,8 @@ fn verify_kzg_proof_batch(
 
     // Pairing check: e(proof_lincomb, [τ]G2) =? e(rhs_g1, G2_generator)
     let g2_one: substrate_bn::G2 = AffineG2::one().into();
-    Ok(pairings_verify(proof_lincomb, g2_tau(), rhs_g1, g2_one))
+    tracing::debug!("verify_kzg_proof_batch: running pairing check");
+    let result = pairings_verify(proof_lincomb, g2_tau(), rhs_g1, g2_one);
+    tracing::debug!("verify_kzg_proof_batch: pairing check result={}", result);
+    Ok(result)
 }
