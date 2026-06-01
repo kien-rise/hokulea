@@ -63,6 +63,7 @@ pub fn g1_lincomb(points: &[AffineG1], scalars: &[Fr]) -> Result<G1, KzgError> {
             "g1_lincomb: points and scalars have mismatched lengths".to_string(),
         ));
     }
+    tracing::debug!("g1_lincomb: MSM over {} point(s)", points.len());
     Ok(AffineG1::msm(points, scalars).into())
 }
 
@@ -70,8 +71,11 @@ pub fn g1_lincomb(points: &[AffineG1], scalars: &[Fr]) -> Result<G1, KzgError> {
 ///
 /// Implemented as a single multi-pairing `e(a1, a2) * e(-b1, b2) == 1`.
 pub fn pairings_verify(a1: G1, a2: G2, b1: G1, b2: G2) -> bool {
+    tracing::debug!("pairings_verify: computing pairing_batch");
     let result = pairing_batch(&[(a1, a2), (-b1, b2)]);
-    result == Gt::one()
+    let ok = result == Gt::one();
+    tracing::debug!("pairings_verify: result={}", ok);
+    ok
 }
 
 /// Encode an `Fq` as 32 little-endian bytes — the wire format used by `arkworks`'s
@@ -143,6 +147,11 @@ pub fn to_fr_array_canonical(blob: &[u8]) -> Result<Vec<Fr>, KzgError> {
     if blob.len() % BYTES_PER_FIELD_ELEMENT != 0 {
         return Err(KzgError::InvalidInputLength);
     }
+    tracing::debug!(
+        "to_fr_array_canonical: converting {} bytes ({} field elements)",
+        blob.len(),
+        blob.len() / BYTES_PER_FIELD_ELEMENT
+    );
     let mut out = Vec::with_capacity(blob.len() / BYTES_PER_FIELD_ELEMENT);
     for chunk in blob.chunks_exact(BYTES_PER_FIELD_ELEMENT) {
         // Round-trip through `from_bytes_be_mod_order` and compare with `from_slice`
@@ -155,6 +164,10 @@ pub fn to_fr_array_canonical(blob: &[u8]) -> Result<Vec<Fr>, KzgError> {
         }
         out.push(direct);
     }
+    tracing::debug!(
+        "to_fr_array_canonical: produced {} Fr element(s)",
+        out.len()
+    );
     Ok(out)
 }
 
@@ -177,6 +190,11 @@ impl PolynomialEvalForm {
         }
         let underlying = evals.len() * BYTES_PER_FIELD_ELEMENT;
         let next_pow2 = evals.len().next_power_of_two();
+        tracing::debug!(
+            "PolynomialEvalForm::new: {} eval(s), padding to {} (next power of two)",
+            evals.len(),
+            next_pow2
+        );
         let mut padded = evals;
         padded.resize(next_pow2, Fr::zero());
         Ok(Self {
@@ -257,6 +275,11 @@ pub fn evaluate_polynomial_in_evaluation_form(
     z: &Fr,
 ) -> Result<Fr, KzgError> {
     let blob_size = polynomial.len_underlying_blob_bytes();
+    tracing::debug!(
+        "evaluate_polynomial_in_evaluation_form: poly len={}, blob_bytes={}",
+        polynomial.len(),
+        blob_size
+    );
     let roots_of_unity = calculate_roots_of_unity(blob_size as u64)?;
 
     if polynomial.len() != roots_of_unity.len() {
@@ -269,6 +292,10 @@ pub fn evaluate_polynomial_in_evaluation_form(
         .ok_or(KzgError::InvalidDenominator)?;
 
     if let Some(idx) = roots_of_unity.iter().position(|d| *d == *z) {
+        tracing::debug!(
+            "evaluate_polynomial_in_evaluation_form: z is a root of unity at index {}, returning eval directly",
+            idx
+        );
         return polynomial
             .evaluations()
             .get(idx)
@@ -276,6 +303,10 @@ pub fn evaluate_polynomial_in_evaluation_form(
             .ok_or_else(|| KzgError::GenericError("polynomial element missing".to_string()));
     }
 
+    tracing::debug!(
+        "evaluate_polynomial_in_evaluation_form: z not a root of unity, running barycentric sum over {} terms",
+        width
+    );
     let mut sum = Fr::zero();
     for (f_i, domain_i) in polynomial.evaluations().iter().zip(roots_of_unity.iter()) {
         let a = *f_i * *domain_i;
@@ -306,6 +337,12 @@ pub fn calculate_roots_of_unity(length_of_data_after_padding: u64) -> Result<Vec
     }
     let target = (n_field_elements as usize).next_power_of_two();
     let log2 = target.trailing_zeros() as usize;
+    tracing::debug!(
+        "calculate_roots_of_unity: {} field element(s), target={}, log2={}",
+        n_field_elements,
+        target,
+        log2
+    );
 
     let root = get_primitive_root_of_unity(log2)
         .ok_or_else(|| KzgError::GenericError("power must be <= 28".to_string()))?;
@@ -313,6 +350,7 @@ pub fn calculate_roots_of_unity(length_of_data_after_padding: u64) -> Result<Vec
     // Drop the duplicated trailing `1` so `roots.len() == target`.
     let last = roots.len() - 1;
     roots.truncate(last);
+    tracing::debug!("calculate_roots_of_unity: produced {} root(s)", roots.len());
     Ok(roots)
 }
 
@@ -337,6 +375,11 @@ pub fn compute_challenge(
     blob_poly: &PolynomialEvalForm,
     commitment: &AffineG1,
 ) -> Result<Fr, KzgError> {
+    tracing::debug!(
+        "compute_challenge: blob poly len={}, underlying_bytes={}",
+        blob_poly.len(),
+        blob_poly.len_underlying_blob_bytes()
+    );
     validate_g1_point(&(*commitment).into())?;
 
     let challenge_input_size = FIAT_SHAMIR_PROTOCOL_DOMAIN.len()
@@ -365,6 +408,10 @@ pub fn compute_challenge(
     let commit_bytes = serialize_g1_compressed(commitment);
     buf[offset..offset + SIZE_OF_G1_AFFINE_COMPRESSED].copy_from_slice(&commit_bytes);
 
+    tracing::debug!(
+        "compute_challenge: hashing {} byte transcript",
+        challenge_input_size
+    );
     Ok(hash_to_field_element(&buf))
 }
 
@@ -380,6 +427,10 @@ pub fn compute_challenges_and_evaluate_polynomial(
         ));
     }
 
+    tracing::debug!(
+        "compute_challenges_and_evaluate_polynomial: processing {} blob(s)",
+        blobs_data.len()
+    );
     let mut zs = Vec::with_capacity(blobs_data.len());
     let mut ys = Vec::with_capacity(blobs_data.len());
     for (poly, commit) in blobs_data.iter().zip(commitments.iter()) {
@@ -388,6 +439,10 @@ pub fn compute_challenges_and_evaluate_polynomial(
         zs.push(z);
         ys.push(y);
     }
+    tracing::debug!(
+        "compute_challenges_and_evaluate_polynomial: done, produced {} (z, y) pair(s)",
+        zs.len()
+    );
     Ok((zs, ys))
 }
 
