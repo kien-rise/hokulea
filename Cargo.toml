@@ -8,13 +8,13 @@ members = [
     "canoe/sp1-cc/host",
     "canoe/sp1-cc/verifier",
     "canoe/sp1-cc/vkey-bin",
-    "canoe/steel/apps",
-    "canoe/steel/methods",
-    "canoe/steel/verifier",
+    # "canoe/steel/apps",
+    # "canoe/steel/methods",
+    # "canoe/steel/verifier",
     "canoe/verifier-address-fetcher",
     "canoe/verifier",
     "crates/*",
-    "example/preloader",
+    # "example/preloader",
 ]
 
 [profile.dev-client]
@@ -118,9 +118,9 @@ canoe-verifier = { path = "./canoe/verifier", default-features = false }
 canoe-verifier-address-fetcher = { path = "./canoe/verifier-address-fetcher", default-features = false }
 
 # Steel
-canoe-steel-apps = { path = "./canoe/steel/apps", default-features = false }
-canoe-steel-methods = { path = "./canoe/steel/methods", default-features = false }
-canoe-steel-verifier = { path = "./canoe/steel/verifier", default-features = false }
+# canoe-steel-apps = { path = "./canoe/steel/apps", default-features = false }
+# canoe-steel-methods = { path = "./canoe/steel/methods", default-features = false }
+# canoe-steel-verifier = { path = "./canoe/steel/verifier", default-features = false }
 
 risc0-build = { version = "3.0", features = ["docker"] }
 risc0-build-ethereum = { version = "3.0" }
